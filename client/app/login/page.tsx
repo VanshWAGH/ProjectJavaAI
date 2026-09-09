@@ -39,6 +39,7 @@ const LoginContent = () => {
 
   useEffect(() => {
     if (!isLoading && user) {
+      document.cookie = "devpilot_auth=1; path=/; max-age=604800; SameSite=Lax";
       router.replace(next.startsWith("/") ? next : "/dashboard");
     }
   }, [user, isLoading, next, router]);

@@ -21,6 +21,7 @@ export function useLogout() {
   return useMutation({
     mutationFn: () => api.logout(),
     onSuccess: () => {
+      document.cookie = "devpilot_auth=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
       queryClient.clear();
       router.push("/login");
     },

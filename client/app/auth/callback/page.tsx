@@ -14,6 +14,7 @@ export default function AuthCallbackPage() {
     if (!isFetched || isLoading) return;
 
     if (user) {
+      document.cookie = "devpilot_auth=1; path=/; max-age=604800; SameSite=Lax";
       router.replace("/dashboard");
       return;
     }

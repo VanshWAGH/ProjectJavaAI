@@ -207,6 +207,13 @@ public class ChatService {
             } catch (Exception e) {
                 log.error("Error during streaming chat reply: {}", e.getMessage(), e);
                 try {
+                    emitter.send(SseEmitter.event()
+                            .name("error")
+                            .data(objectMapper.writeValueAsString(java.util.Map.of(
+                                    "error", e.getMessage() != null ? e.getMessage() : "Error communicating with AI service"))));
+                } catch (Exception ignored) {
+                }
+                try {
                     emitter.completeWithError(e);
                 } catch (Exception ignored) {
                 }

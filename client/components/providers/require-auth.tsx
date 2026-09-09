@@ -12,6 +12,8 @@ export function RequireAuth({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!isLoading && !user) {
+      // Clear the auth cookie so middleware doesn't block the redirect to /login
+      document.cookie = "devpilot_auth=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
       router.replace("/login");
     }
   }, [isLoading, user, router]);

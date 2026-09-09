@@ -1,10 +1,73 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
+import { BrainCircuit, ChevronDown } from "lucide-react";
 import { CodeBlock } from "@/components/chat/code-block";
+import { cn } from "@/lib/utils";
+
+function ThinkingBlock({
+  thinking,
+  isLive,
+}: {
+  thinking: string;
+  isLive: boolean;
+}) {
+  const [isOpen, setIsOpen] = useState(isLive);
+
+  return (
+    <div className="my-2.5 overflow-hidden rounded-xl border border-border/70 bg-muted/40 text-xs transition-all shadow-xs">
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className="flex w-full items-center justify-between px-3 py-2 text-muted-foreground transition-colors hover:text-foreground hover:bg-muted/60"
+      >
+        <div className="flex items-center gap-2">
+          <BrainCircuit
+            className={cn(
+              "size-3.5 text-primary",
+              isLive && "animate-pulse text-amber-500"
+            )}
+          />
+          <span className="font-medium text-[11px] uppercase tracking-wider">
+            {isLive ? "Thinking..." : "Thought Process"}
+          </span>
+          {isLive && (
+            <span className="inline-block size-1.5 animate-ping rounded-full bg-amber-500" />
+          )}
+        </div>
+        <ChevronDown
+          className={cn(
+            "size-3.5 transition-transform duration-200",
+            isOpen && "rotate-180"
+          )}
+        />
+      </button>
+
+      {isOpen && (
+        <div className="border-t border-border/50 bg-background/50 px-3.5 py-2.5 font-mono text-[11px] leading-relaxed text-muted-foreground/90 whitespace-pre-wrap max-h-64 overflow-y-auto">
+          {thinking}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function MarkdownRenderer({ content }: { content: string }) {
   if (!content) return null;
+
+  // Extract <think>...</think> or unclosed <think>... during streaming
+  const thinkRegex = /<think>([\s\S]*?)(?:<\/think>|$)/;
+  const thinkMatch = content.match(thinkRegex);
+
+  let thinkingContent: string | null = null;
+  let isThinkingLive = false;
+  let renderableContent = content;
+
+  if (thinkMatch && thinkMatch[1]) {
+    thinkingContent = thinkMatch[1].trim();
+    isThinkingLive = !content.includes("</think>");
+    renderableContent = content.replace(thinkRegex, "").trim();
+  }
 
   // Split content by code blocks: ```lang ... ```
   const codeBlockRegex = /```(\w*)\n([\s\S]*?)```/g;
@@ -14,35 +77,44 @@ export function MarkdownRenderer({ content }: { content: string }) {
 
   let keyCounter = 0;
 
-  while ((match = codeBlockRegex.exec(content)) !== null) {
-    const textBefore = content.substring(lastIndex, match.index);
-    if (textBefore) {
+  if (renderableContent) {
+    while ((match = codeBlockRegex.exec(renderableContent)) !== null) {
+      const textBefore = renderableContent.substring(lastIndex, match.index);
+      if (textBefore) {
+        parts.push(
+          <RenderText key={`text-${keyCounter++}`} text={textBefore} />
+        );
+      }
+
+      const lang = match[1] || "";
+      const code = match[2] || "";
       parts.push(
-        <RenderText key={`text-${keyCounter++}`} text={textBefore} />
+        <CodeBlock
+          key={`code-${keyCounter++}`}
+          language={lang}
+          code={code.replace(/\n$/, "")}
+        />
       );
+
+      lastIndex = match.index + match[0].length;
     }
 
-    const lang = match[1] || "";
-    const code = match[2] || "";
-    parts.push(
-      <CodeBlock
-        key={`code-${keyCounter++}`}
-        language={lang}
-        code={code.replace(/\n$/, "")}
-      />
-    );
-
-    lastIndex = match.index + match[0].length;
+    const remaining = renderableContent.substring(lastIndex);
+    if (remaining) {
+      parts.push(
+        <RenderText key={`text-${keyCounter++}`} text={remaining} />
+      );
+    }
   }
 
-  const remaining = content.substring(lastIndex);
-  if (remaining) {
-    parts.push(
-      <RenderText key={`text-${keyCounter++}`} text={remaining} />
-    );
-  }
-
-  return <div className="space-y-2 text-sm leading-relaxed">{parts}</div>;
+  return (
+    <div className="space-y-2 text-sm leading-relaxed">
+      {thinkingContent && (
+        <ThinkingBlock thinking={thinkingContent} isLive={isThinkingLive} />
+      )}
+      {parts}
+    </div>
+  );
 }
 
 function RenderText({ text }: { text: string }) {

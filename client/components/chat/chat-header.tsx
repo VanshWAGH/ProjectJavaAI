@@ -8,6 +8,7 @@ import {
   MessageSquarePlus,
   PanelLeft,
   RotateCcw,
+  Sparkles,
 } from "lucide-react";
 import type { Repository } from "@/lib/api";
 import { Button } from "@/components/ui/button";
@@ -88,6 +89,11 @@ export function ChatHeader({
       </div>
 
       <div className="flex items-center gap-1.5 sm:gap-2">
+        <div className="hidden xl:flex items-center gap-1.5 rounded-full border border-border/70 bg-card/60 px-2.5 py-1 text-[11px] text-muted-foreground shadow-2xs backdrop-blur-xs">
+          <Sparkles className="size-3 text-primary animate-pulse" />
+          <span className="font-medium tracking-tight">OpenRouter Free AI</span>
+        </div>
+
         {repo && repo.indexStatus !== "READY" && (
           <Button
             variant="outline"

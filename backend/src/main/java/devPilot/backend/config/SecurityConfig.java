@@ -61,7 +61,7 @@ public class SecurityConfig {
                                 response.setStatus(HttpStatus.NO_CONTENT.value()))
                         .invalidateHttpSession(true)
                         .clearAuthentication(true)
-                        .deleteCookies("DEVPILOT_SESSION"));
+                        .deleteCookies("DEVPILOT_SESSION", "devpilot_auth"));
 
         return http.build();
     }
@@ -69,7 +69,21 @@ public class SecurityConfig {
     @Bean
     AuthenticationSuccessHandler oauth2SuccessHandler(
             @Value("${app.frontend-url}") String frontendUrl) {
-        SimpleUrlAuthenticationSuccessHandler handler = new SimpleUrlAuthenticationSuccessHandler();
+        SimpleUrlAuthenticationSuccessHandler handler = new SimpleUrlAuthenticationSuccessHandler() {
+            @Override
+            public void onAuthenticationSuccess(
+                    jakarta.servlet.http.HttpServletRequest request,
+                    jakarta.servlet.http.HttpServletResponse response,
+                    org.springframework.security.core.Authentication authentication)
+                    throws java.io.IOException, jakarta.servlet.ServletException {
+                jakarta.servlet.http.Cookie cookie = new jakarta.servlet.http.Cookie("devpilot_auth", "1");
+                cookie.setPath("/");
+                cookie.setMaxAge(7 * 24 * 3600);
+                cookie.setHttpOnly(false);
+                response.addCookie(cookie);
+                super.onAuthenticationSuccess(request, response, authentication);
+            }
+        };
         handler.setDefaultTargetUrl(frontendUrl + "/auth/callback");
         return handler;
     }

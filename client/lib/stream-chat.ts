@@ -77,6 +77,15 @@ export async function streamChatMessage(
           handlers.onUserMessage?.(JSON.parse(data) as ChatMessage);
         } else if (event === "assistant_message") {
           handlers.onAssistantMessage?.(JSON.parse(data) as ChatMessage);
+        } else if (event === "error") {
+          let errorMsg = "AI streaming error";
+          try {
+            const parsed = JSON.parse(data);
+            errorMsg = parsed.error ?? parsed.message ?? errorMsg;
+          } catch {
+            errorMsg = data;
+          }
+          handlers.onError?.(new Error(errorMsg));
         } else if (event === "done") {
           handlers.onDone?.();
         }

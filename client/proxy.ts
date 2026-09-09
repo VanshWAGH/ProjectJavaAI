@@ -5,7 +5,9 @@ const AUTH_COOKIE = "devpilot_auth";
 
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const isAuthed = request.cookies.get(AUTH_COOKIE)?.value === "1";
+  const isAuthed =
+    request.cookies.get(AUTH_COOKIE)?.value === "1" ||
+    request.cookies.has("DEVPILOT_SESSION");
 
   // Allow OAuth return path through without the frontend cookie yet
   if (pathname.startsWith("/auth/callback")) {
