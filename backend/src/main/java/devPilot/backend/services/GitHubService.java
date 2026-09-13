@@ -75,6 +75,7 @@ public class GitHubService {
                     .retrieve()
                     .onStatus(HttpStatusCode::isError, (req, res) -> {
                         log.warn("Failed to fetch file {} in {}/{}: status {}", path, owner, repo, res.getStatusCode());
+                        throw new RuntimeException("GitHub API returned " + res.getStatusCode() + " for " + path);
                     })
                     .body(String.class);
         } catch (Exception e) {

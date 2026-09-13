@@ -94,17 +94,31 @@ export function ChatHeader({
           <span className="font-medium tracking-tight">OpenRouter Free AI</span>
         </div>
 
-        {repo && repo.indexStatus !== "READY" && (
+        {repo && repo.indexStatus === "INDEXING" && (
+          <div className="hidden sm:flex items-center gap-2 rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-[11px]">
+            <RotateCcw className="size-3 animate-spin text-amber-500" />
+            <span className="font-medium text-amber-600 dark:text-amber-400">
+              {repo.filesProcessed || 0}/{repo.filesTotal || "?"} files
+            </span>
+            {repo.filesTotal > 0 && (
+              <span className="text-muted-foreground">
+                ({Math.round(((repo.filesProcessed || 0) / repo.filesTotal) * 100)}%)
+              </span>
+            )}
+          </div>
+        )}
+
+        {repo && repo.indexStatus !== "READY" && repo.indexStatus !== "INDEXING" && (
           <Button
             variant="outline"
             size="sm"
-            disabled={isIndexing}
+            disabled={indexMutation.isPending}
             onClick={() => indexMutation.mutate(repo.id)}
             className="h-8 gap-1.5 text-xs"
           >
-            <RotateCcw className={`size-3.5 ${isIndexing ? "animate-spin" : ""}`} />
+            <RotateCcw className={`size-3.5 ${indexMutation.isPending ? "animate-spin" : ""}`} />
             <span className="hidden sm:inline">
-              {isIndexing ? "Indexing..." : "Re-index"}
+              {indexMutation.isPending ? "Starting..." : "Re-index"}
             </span>
           </Button>
         )}

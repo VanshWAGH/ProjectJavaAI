@@ -34,7 +34,7 @@ export function RepoCard({ repo }: { repo: Repository }) {
   }
 
   function handlePrimary() {
-    if (repo.indexStatus === "READY") {
+    if (repo.indexStatus === "READY" || repo.indexStatus === "INDEXING") {
       openChat();
       return;
     }
@@ -132,6 +132,7 @@ export function RepoCard({ repo }: { repo: Repository }) {
           <Button
             variant="ghost"
             size="sm"
+            nativeButton={false}
             render={<a href={repo.htmlUrl} target="_blank" rel="noreferrer" />}
           >
             <ExternalLink data-icon="inline-start" />
@@ -142,7 +143,7 @@ export function RepoCard({ repo }: { repo: Repository }) {
         )}
 
         <div className="flex gap-2">
-          {repo.indexStatus === "READY" && (
+          {(repo.indexStatus === "READY" || isIndexing) && (
             <Button variant="secondary" size="sm" onClick={openChat}>
               <MessageSquare data-icon="inline-start" />
               Chat
@@ -150,15 +151,18 @@ export function RepoCard({ repo }: { repo: Repository }) {
           )}
           <Button
             size="sm"
-            variant={isFailed ? "outline" : "default"}
-            className={cn(isFailed && "border-destructive/30 text-destructive hover:bg-destructive/10")}
-            disabled={isIndexing}
+            variant={isFailed ? "outline" : isIndexing ? "secondary" : "default"}
+            className={cn(
+              isFailed && "border-destructive/30 text-destructive hover:bg-destructive/10",
+              isIndexing && "border-amber-500/40 text-amber-700 dark:text-amber-400"
+            )}
+            disabled={indexMutation.isPending && repo.indexStatus !== "INDEXING"}
             onClick={handlePrimary}
           >
             {isIndexing ? (
               <>
                 <Spinner data-icon="inline-start" />
-                Indexing
+                Indexing…
               </>
             ) : repo.indexStatus === "READY" ? (
               <>

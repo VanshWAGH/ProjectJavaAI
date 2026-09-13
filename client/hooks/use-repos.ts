@@ -45,8 +45,14 @@ export function useRepository(repoId: string) {
     queryKey: queryKeys.repos.detail(repoId),
     queryFn: () => api.getRepo(repoId),
     enabled: Boolean(repoId),
-    refetchInterval: (query) =>
-      query.state.data?.indexStatus === "INDEXING" ? INDEXING_POLL_MS : false,
+    staleTime: 5_000,
+    refetchInterval: (query) => {
+      const status = query.state.data?.indexStatus;
+      // Poll every 2s during INDEXING, every 3s during PENDING (to catch the start fast)
+      if (status === "INDEXING") return INDEXING_POLL_MS;
+      if (status === "PENDING") return 3000;
+      return false;
+    },
   });
 }
 

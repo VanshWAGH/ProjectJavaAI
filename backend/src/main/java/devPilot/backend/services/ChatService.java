@@ -123,12 +123,15 @@ public class ChatService {
                 StringBuilder contextBuilder = new StringBuilder();
 
                 for (Document doc : similarDocs) {
-                    String filePath = String.valueOf(doc.getMetadata().getOrDefault("filePath", "unknown"));
+                    String filePath  = String.valueOf(doc.getMetadata().getOrDefault("filePath",  "unknown"));
+                    String fileName  = String.valueOf(doc.getMetadata().getOrDefault("fileName",  filePath));
+                    String repoOwner = String.valueOf(doc.getMetadata().getOrDefault("repoOwner", ""));
+                    String indexedAt = String.valueOf(doc.getMetadata().getOrDefault("indexedAt", ""));
                     Integer startLine = doc.getMetadata().get("startLine") instanceof Number n ? n.intValue() : 1;
-                    Integer endLine = doc.getMetadata().get("endLine") instanceof Number n ? n.intValue() : 1;
-                    String language = String.valueOf(doc.getMetadata().getOrDefault("language", "Code"));
+                    Integer endLine   = doc.getMetadata().get("endLine")   instanceof Number n ? n.intValue() : 1;
+                    String language   = String.valueOf(doc.getMetadata().getOrDefault("language", "Code"));
 
-                    citations.add(new CitationDto(filePath, startLine, endLine, language));
+                    citations.add(new CitationDto(filePath, fileName, startLine, endLine, language, repoOwner, indexedAt));
 
                     contextBuilder.append(String.format("--- File: %s (lines %d-%d, language: %s) ---\n",
                             filePath, startLine, endLine, language));
