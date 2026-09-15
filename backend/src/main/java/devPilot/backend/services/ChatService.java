@@ -31,10 +31,12 @@ import devPilot.backend.entity.ChatMessage;
 import devPilot.backend.entity.ChatSession;
 import devPilot.backend.entity.MessageRole;
 import devPilot.backend.entity.Repository;
+import devPilot.backend.entity.User;
 import devPilot.backend.exception.NotFoundException;
 import devPilot.backend.repository.ChatMessageRepository;
 import devPilot.backend.repository.ChatSessionRepository;
 import devPilot.backend.repository.RepositoryRepository;
+import devPilot.backend.repository.UserRepository;
 
 @Service
 public class ChatService {
@@ -44,22 +46,28 @@ public class ChatService {
     private final ChatSessionRepository chatSessionRepository;
     private final ChatMessageRepository chatMessageRepository;
     private final RepositoryRepository repositoryRepository;
+    private final UserRepository userRepository;
     private final EmbeddingService embeddingService;
-    private final ChatModel chatModel;
+    private final ChatModel defaultChatModel;
+    private final AiModelFactory aiModelFactory;
     private final ObjectMapper objectMapper;
 
     public ChatService(
             ChatSessionRepository chatSessionRepository,
             ChatMessageRepository chatMessageRepository,
             RepositoryRepository repositoryRepository,
+            UserRepository userRepository,
             EmbeddingService embeddingService,
-            ChatModel chatModel,
+            ChatModel defaultChatModel,
+            AiModelFactory aiModelFactory,
             ObjectMapper objectMapper) {
         this.chatSessionRepository = chatSessionRepository;
         this.chatMessageRepository = chatMessageRepository;
         this.repositoryRepository = repositoryRepository;
+        this.userRepository = userRepository;
         this.embeddingService = embeddingService;
-        this.chatModel = chatModel;
+        this.defaultChatModel = defaultChatModel;
+        this.aiModelFactory = aiModelFactory;
         this.objectMapper = objectMapper;
     }
 
@@ -101,6 +109,11 @@ public class ChatService {
         ChatSession session = chatSessionRepository.findByIdAndUserId(sessionId, userId)
                 .orElseThrow(() -> new NotFoundException("Chat session not found"));
 
+        // ── Resolve the user's ChatModel (BYOK or server default) ──────────
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new NotFoundException("User not found"));
+        ChatModel chatModel = aiModelFactory.getModelForUser(user, defaultChatModel);
+
         ChatMessage savedUserMsg = chatMessageRepository.save(
                 new ChatMessage(sessionId, MessageRole.USER, userContent, null));
 
@@ -138,22 +151,16 @@ public class ChatService {
                     contextBuilder.append(doc.getText()).append("\n\n");
                 }
 
-                String systemPromptText = """
-                        You are DevPilot, an expert AI programming assistant.
-                        You have access to the user's codebase context provided below.
-                        Answer the user's question accurately and helpfully using the provided code context whenever relevant.
-                        Reference filenames and code locations when discussing implementations.
-                        If the answer cannot be determined from the code context, say so politely and offer general guidance.
-
-                        Code Context:
-                        %s
-                        """.formatted(contextBuilder.isEmpty() ? "No specific code chunks found for this query." : contextBuilder.toString());
+                String systemPromptText = buildSystemPrompt(contextBuilder.toString());
 
                 List<Message> promptMessages = new ArrayList<>();
                 promptMessages.add(new SystemMessage(systemPromptText));
 
+                // ── Conversation history (capped at last 10 turns) ─────────
                 List<ChatMessage> history = chatMessageRepository.findBySessionIdOrderByCreatedAtAsc(sessionId);
-                for (ChatMessage m : history) {
+                int historyStart = Math.max(0, history.size() - 20); // last 10 pairs
+                for (int i = historyStart; i < history.size(); i++) {
+                    ChatMessage m = history.get(i);
                     if (m.getId().equals(savedUserMsg.getId())) continue;
                     if (m.getRole() == MessageRole.USER) {
                         promptMessages.add(new UserMessage(m.getContent()));
@@ -209,11 +216,12 @@ public class ChatService {
 
             } catch (Exception e) {
                 log.error("Error during streaming chat reply: {}", e.getMessage(), e);
+                String errorMessage = extractUserFriendlyError(e);
                 try {
                     emitter.send(SseEmitter.event()
                             .name("error")
                             .data(objectMapper.writeValueAsString(java.util.Map.of(
-                                    "error", e.getMessage() != null ? e.getMessage() : "Error communicating with AI service"))));
+                                    "error", errorMessage))));
                 } catch (Exception ignored) {
                 }
                 try {
@@ -224,6 +232,69 @@ public class ChatService {
         });
 
         return emitter;
+    }
+
+    /**
+     * Build a rich system prompt that instructs the AI to respond
+     * professionally and technically.
+     */
+    private String buildSystemPrompt(String codeContext) {
+        String contextSection = (codeContext == null || codeContext.isBlank())
+                ? "No specific code chunks were found for this query. Answer based on your general knowledge."
+                : codeContext;
+
+        return """
+                You are **DevPilot**, a senior-level AI software engineer and technical consultant.
+
+                ## Core Principles
+                1. **Accuracy first** — ground every claim in the code context provided below. \
+                   If the context does not contain enough information, state that clearly and offer general best-practice guidance.
+                2. **Technical depth** — answer at the level of a senior engineer: explain *why*, \
+                   not just *what*. Mention design patterns, trade-offs, complexity, and edge cases when relevant.
+                3. **Cite your sources** — when referencing code, always include the file path and line range \
+                   (e.g. `src/services/AuthService.java:42-58`).
+                4. **Structure for clarity** — use Markdown headings, bullet lists, numbered steps, and \
+                   fenced code blocks with language tags (```java, ```typescript, etc.).
+                5. **Be concise yet complete** — no filler text. Every sentence should add value.
+                6. **Actionable answers** — when suggesting improvements, provide concrete code snippets \
+                   ready to copy-paste. Mark changes clearly.
+
+                ## Response Format Guidelines
+                - Start with a brief **TL;DR** (1-2 sentences) for long answers.
+                - Use `### Heading` sections to organize multi-part answers.
+                - Wrap inline code references in backticks: `ClassName.methodName()`.
+                - For code suggestions, always include the full import statements needed.
+                - When comparing approaches, use a concise table or bullet comparison.
+
+                ## Code Context (from the user's repository)
+                %s
+                """.formatted(contextSection);
+    }
+
+    /**
+     * Extract a user-friendly error message from exceptions,
+     * especially for common API errors like rate limits or auth failures.
+     */
+    private String extractUserFriendlyError(Exception e) {
+        String msg = e.getMessage() != null ? e.getMessage() : "";
+
+        if (msg.contains("429") || msg.toLowerCase().contains("rate limit")) {
+            return "AI rate limit exceeded. Please wait a moment and try again, or switch to a different provider in Settings.";
+        }
+        if (msg.contains("401") || msg.contains("403") || msg.toLowerCase().contains("unauthorized") || msg.toLowerCase().contains("invalid api key")) {
+            return "AI API key is invalid or expired. Please update your API key in Settings.";
+        }
+        if (msg.contains("404") || msg.toLowerCase().contains("model not found")) {
+            return "The selected AI model was not found. Please check your model name in Settings.";
+        }
+        if (msg.contains("500") || msg.contains("503")) {
+            return "The AI service is temporarily unavailable. Please try again in a few moments.";
+        }
+        if (msg.contains("timeout")) {
+            return "The AI request timed out. Please try a shorter question or try again later.";
+        }
+
+        return msg.isBlank() ? "An unexpected error occurred while communicating with the AI service." : msg;
     }
 
     private ChatMessageResponse toMessageResponse(ChatMessage message) {

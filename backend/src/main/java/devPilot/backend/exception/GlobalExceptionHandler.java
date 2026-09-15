@@ -42,10 +42,12 @@ public class GlobalExceptionHandler {
     }
 
     private ResponseEntity<Map<String, Object>> error(HttpStatus status, String message) {
-        return ResponseEntity.status(status).body(Map.of(
-                "status", status.value(),
-                "error", status.getReasonPhrase(),
-                "message", message,
-                "timestamp", Instant.now().toString()));
+        return ResponseEntity.status(status)
+                .header("Content-Type", "application/json")
+                .body(Map.of(
+                        "status", status.value(),
+                        "error", status.getReasonPhrase(),
+                        "message", message,
+                        "timestamp", Instant.now().toString()));
     }
 }

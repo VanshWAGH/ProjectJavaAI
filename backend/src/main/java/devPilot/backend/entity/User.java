@@ -37,6 +37,15 @@ public class User {
     @Column(name = "token_scopes", length = 500)
     private String tokenScopes;
 
+    @Column(name = "ai_provider", length = 30)
+    private String aiProvider;
+
+    @Column(name = "ai_model", length = 100)
+    private String aiModel;
+
+    @Column(name = "ai_api_key", columnDefinition = "TEXT")
+    private String aiApiKey;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -113,6 +122,30 @@ public class User {
 
     public void setTokenScopes(String tokenScopes) {
         this.tokenScopes = tokenScopes;
+    }
+
+    public String getAiProvider() {
+        return aiProvider;
+    }
+
+    public void setAiProvider(String aiProvider) {
+        this.aiProvider = aiProvider;
+    }
+
+    public String getAiModel() {
+        return aiModel;
+    }
+
+    public void setAiModel(String aiModel) {
+        this.aiModel = aiModel;
+    }
+
+    public String getAiApiKey() {
+        return aiApiKey;
+    }
+
+    public void setAiApiKey(String aiApiKey) {
+        this.aiApiKey = aiApiKey;
     }
 
     public Instant getCreatedAt() {

@@ -18,13 +18,40 @@ import {
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useCurrentUser, useLogout } from "@/hooks/use-auth";
+import { useSettings, useUpdateSettings } from "@/hooks/use-settings";
+import { useState, useEffect } from "react";
 
 export function SettingsDashboard() {
   const { data: user } = useCurrentUser();
+  const { data: settings, isLoading: isSettingsLoading } = useSettings();
+  const updateSettings = useUpdateSettings();
+  
   const logout = useLogout();
   const { theme, setTheme, resolvedTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
+
+  const [aiProvider, setAiProvider] = useState<string>("openrouter");
+  const [aiModel, setAiModel] = useState<string>("openrouter/auto");
+  const [aiApiKey, setAiApiKey] = useState<string>("");
+
+  useEffect(() => {
+    if (settings) {
+      setAiProvider(settings.aiProvider || "openrouter");
+      setAiModel(settings.aiModel || "openrouter/auto");
+    }
+  }, [settings]);
+
+  const handleSaveSettings = () => {
+    updateSettings.mutate({
+      aiProvider,
+      aiModel,
+      aiApiKey,
+    });
+    // Don't clear API key immediately so they can see success
+  };
 
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 p-4 md:p-6">
@@ -115,6 +142,63 @@ export function SettingsDashboard() {
             </div>
             <ModeToggle />
           </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>AI Configuration (BYOK)</CardTitle>
+          <CardDescription>
+            Bring Your Own Key to unlock professional and technical answers. If configured, chat requests will use your key.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {isSettingsLoading ? (
+             <div className="text-sm text-muted-foreground animate-pulse">Loading settings...</div>
+          ) : (
+            <>
+              <div className="grid gap-3">
+                <Label>AI Provider</Label>
+                <Select value={aiProvider} onValueChange={setAiProvider}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select Provider" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="openai">OpenAI</SelectItem>
+                    <SelectItem value="gemini">Google Gemini</SelectItem>
+                    <SelectItem value="anthropic">Anthropic (Claude)</SelectItem>
+                    <SelectItem value="openrouter">OpenRouter (Any model)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid gap-3">
+                <Label>Model Name</Label>
+                <Input 
+                  placeholder="e.g. gpt-4o, gemini-1.5-pro, claude-3-5-sonnet-20241022" 
+                  value={aiModel} 
+                  onChange={(e) => setAiModel(e.target.value)} 
+                />
+                <p className="text-xs text-muted-foreground">
+                  Ensure the model name exactly matches the provider's API.
+                </p>
+              </div>
+              <div className="grid gap-3">
+                <Label>API Key</Label>
+                <Input 
+                  type="password" 
+                  placeholder={settings?.hasApiKey ? "•••••••••••••••• (Leave blank to keep existing)" : "Enter your API key"}
+                  value={aiApiKey} 
+                  onChange={(e) => setAiApiKey(e.target.value)} 
+                />
+              </div>
+              <Button 
+                onClick={handleSaveSettings} 
+                disabled={updateSettings.isPending}
+              >
+                {updateSettings.isPending ? "Saving..." : "Save AI Configuration"}
+              </Button>
+            </>
+          )}
         </CardContent>
       </Card>
 

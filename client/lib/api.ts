@@ -8,6 +8,18 @@ export type User = {
   avatarUrl: string | null;
 };
 
+export type UserSettings = {
+  aiProvider: "openai" | "gemini" | "anthropic" | "openrouter";
+  aiModel: string;
+  hasApiKey: boolean;
+};
+
+export type UserSettingsRequest = {
+  aiProvider: string;
+  aiModel: string;
+  aiApiKey: string;
+};
+
 export type Repository = {
   id: string;
   githubRepoId: number;
@@ -135,4 +147,11 @@ export const api = {
     ),
   getMessages: (sessionId: string) =>
     apiFetch<ChatMessage[]>(`/api/chat/sessions/${sessionId}`),
+
+  getSettings: () => apiFetch<UserSettings>("/api/settings"),
+  updateSettings: (settings: UserSettingsRequest) =>
+    apiFetch<UserSettings>("/api/settings", {
+      method: "PUT",
+      body: JSON.stringify(settings),
+    }),
 };
