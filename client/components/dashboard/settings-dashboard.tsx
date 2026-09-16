@@ -28,7 +28,7 @@ export function SettingsDashboard() {
   const { data: user } = useCurrentUser();
   const { data: settings, isLoading: isSettingsLoading } = useSettings();
   const updateSettings = useUpdateSettings();
-  
+
   const logout = useLogout();
   const { theme, setTheme, resolvedTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
@@ -154,12 +154,12 @@ export function SettingsDashboard() {
         </CardHeader>
         <CardContent className="space-y-4">
           {isSettingsLoading ? (
-             <div className="text-sm text-muted-foreground animate-pulse">Loading settings...</div>
+            <div className="text-sm text-muted-foreground animate-pulse">Loading settings...</div>
           ) : (
             <>
               <div className="grid gap-3">
                 <Label>AI Provider</Label>
-                <Select value={aiProvider} onValueChange={setAiProvider}>
+                <Select value={aiProvider} onValueChange={(value) => setAiProvider(value ?? "")}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select Provider" />
                   </SelectTrigger>
@@ -173,10 +173,10 @@ export function SettingsDashboard() {
               </div>
               <div className="grid gap-3">
                 <Label>Model Name</Label>
-                <Input 
-                  placeholder="e.g. gpt-4o, gemini-1.5-pro, claude-3-5-sonnet-20241022" 
-                  value={aiModel} 
-                  onChange={(e) => setAiModel(e.target.value)} 
+                <Input
+                  placeholder="e.g. gpt-4o, gemini-1.5-pro, claude-3-5-sonnet-20241022"
+                  value={aiModel}
+                  onChange={(e) => setAiModel(e.target.value)}
                 />
                 <p className="text-xs text-muted-foreground">
                   Ensure the model name exactly matches the provider's API.
@@ -184,15 +184,15 @@ export function SettingsDashboard() {
               </div>
               <div className="grid gap-3">
                 <Label>API Key</Label>
-                <Input 
-                  type="password" 
+                <Input
+                  type="password"
                   placeholder={settings?.hasApiKey ? "•••••••••••••••• (Leave blank to keep existing)" : "Enter your API key"}
-                  value={aiApiKey} 
-                  onChange={(e) => setAiApiKey(e.target.value)} 
+                  value={aiApiKey}
+                  onChange={(e) => setAiApiKey(e.target.value)}
                 />
               </div>
-              <Button 
-                onClick={handleSaveSettings} 
+              <Button
+                onClick={handleSaveSettings}
                 disabled={updateSettings.isPending}
               >
                 {updateSettings.isPending ? "Saving..." : "Save AI Configuration"}
