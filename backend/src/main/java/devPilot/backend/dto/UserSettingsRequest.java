@@ -12,6 +12,6 @@ public record UserSettingsRequest(
         @NotBlank(message = "Model name is required")
         String aiModel,
 
-        @NotBlank(message = "API key is required")
+        // Nullable — leave blank to keep existing key
         String aiApiKey
 ) {}

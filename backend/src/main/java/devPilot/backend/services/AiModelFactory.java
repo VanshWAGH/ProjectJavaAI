@@ -8,7 +8,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.openai.OpenAiChatModel;
 import org.springframework.ai.openai.OpenAiChatOptions;
-import org.springframework.ai.openai.api.OpenAiApi;
+import com.openai.client.OpenAIClient;
+import com.openai.client.okhttp.OpenAIOkHttpClient;
 import org.springframework.security.crypto.encrypt.TextEncryptor;
 import org.springframework.stereotype.Component;
 
@@ -74,13 +75,14 @@ public class AiModelFactory {
                 : DEFAULT_MODELS.getOrDefault(provider, "gpt-4o-mini");
         
         // Decrypt the API key
-        String apiKey;
+        String decryptedKey;
         try {
-            apiKey = tokenEncryptor.decrypt(user.getAiApiKey());
+            decryptedKey = tokenEncryptor.decrypt(user.getAiApiKey());
         } catch (Exception e) {
             log.warn("Failed to decrypt AI API key for user {}: {}", user.getId(), e.getMessage());
-            apiKey = user.getAiApiKey(); // Fallback if plain text (e.g. legacy/testing)
+            decryptedKey = user.getAiApiKey(); // Fallback if plain text (e.g. legacy/testing)
         }
+        final String apiKey = decryptedKey;
 
         String cacheKey = user.getId() + ":" + provider + ":" + model + ":" + apiKey.hashCode();
 
@@ -100,7 +102,7 @@ public class AiModelFactory {
     private ChatModel createChatModel(String provider, String apiKey, String model) {
         String baseUrl = PROVIDER_BASE_URLS.getOrDefault(provider, PROVIDER_BASE_URLS.get("openrouter"));
 
-        OpenAiApi api = OpenAiApi.builder()
+        OpenAIClient openAiClient = OpenAIOkHttpClient.builder()
                 .apiKey(apiKey)
                 .baseUrl(baseUrl)
                 .build();
@@ -112,8 +114,8 @@ public class AiModelFactory {
                 .build();
 
         return OpenAiChatModel.builder()
-                .openAiApi(api)
-                .defaultOptions(options)
+                .openAiClient(openAiClient)
+                .options(options)
                 .build();
     }
 }
